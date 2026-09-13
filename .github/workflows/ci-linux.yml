@@ -1,0 +1,86 @@
+name: CI (Linux)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Alasan menjalankan workflow secara manual (opsional)"
+        required: false
+        default: "manual run"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    name: Build & Test on ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Dependencies (Linux)
+        run: |
+          sudo mkdir -p /etc/apt/keyrings
+          wget -qO- https://packages.lunarg.com/lunarg-signing-key-pub.asc | \
+            gpg --dearmor | sudo tee /etc/apt/keyrings/lunarg.gpg > /dev/null
+          echo "deb [signed-by=/etc/apt/keyrings/lunarg.gpg] https://packages.lunarg.com/vulkan/ jammy main" | \
+            sudo tee /etc/apt/sources.list.d/lunarg-vulkan-jammy.list
+          sudo apt-get update -y
+          sudo apt-get install -y build-essential cmake g++ ninja-build mesa-vulkan-drivers vulkan-sdk
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.9.15"
+
+      - name: Set up Python
+        run: uv sync --dev --python 3.12
+
+      - name: Configure (Linux)
+        run: >
+          cmake . -B build -G Ninja
+          -D VISP_CI=ON
+          -D VISP_VULKAN=OFF
+          -D VISP_FMT_LIB=ON
+          -D GGML_VULKAN=OFF
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      # tests fail with vulkan/llvmpipe (runs out of memory or just wrong results)
+      # - name: Test Vulkan
+      #   working-directory: ./build
+      #   run: |
+      #     export GGML_VK_VISIBLE_DEVICES=0
+      #     ctest --verbose
+
+      - name: Test
+        working-directory: ./build
+        run: ctest --verbose -C Release
+
+      - name: Install
+        run: cmake --install build --prefix install --config Release
+
+      - name: Package
+        working-directory: ./build
+        run: cpack
+
+      - name: Upload artifacts
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visioncpp-ubuntu-22.04
+          path: |
+            ./build/*.tar.gz
+            ./build/*.zip
+            ./tests/results/*.png
+          compression-level: 0
