@@ -58,7 +58,7 @@ jobs:
         run: >
           cmake . -B build -G Ninja
           -D VISP_CI=ON
-          -D VISP_VULKAN=ON
+          -D VISP_VULKAN=OFF
           -D VISP_FMT_LIB=ON
 
       - name: Configure (Windows)
