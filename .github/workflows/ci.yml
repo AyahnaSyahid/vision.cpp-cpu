@@ -60,6 +60,7 @@ jobs:
           -D VISP_CI=ON
           -D VISP_VULKAN=OFF
           -D VISP_FMT_LIB=ON
+          -D GGML_VULKAN=OFF
 
       - name: Configure (Windows)
         if: matrix.os == 'windows-latest'
