@@ -52,6 +52,7 @@ jobs:
           -D VISP_VULKAN=OFF
           -D VISP_FMT_LIB=ON
           -D GGML_VULKAN=OFF
+          -D GGML_CPU_ALL_VARIANTS=ON
 
       - name: Build
         run: cmake --build build --config Release
